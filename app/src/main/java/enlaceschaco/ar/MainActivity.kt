@@ -1,6 +1,7 @@
 package enlaceschaco.ar
 
 import android.os.Bundle
+import android.view.View
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.activity.ComponentActivity
@@ -19,7 +20,7 @@ import androidx.compose.material.Text
 import androidx.compose.material.MaterialTheme
 import androidx.compose.ui.graphics.Color
 import android.webkit.WebChromeClient
-
+import androidx.activity.addCallback
 
 
 class MainActivity : ComponentActivity() {
@@ -55,8 +56,15 @@ class MainActivity : ComponentActivity() {
             } else {
                 SplashScreen(splashLogos[splashIndex])
             }
+
+        }
+        // Bloquea el botón atrás para TODO el Activity
+        onBackPressedDispatcher.addCallback(this) {
+            // Dejar vacío para bloquear completamente
+            // Si quisieras, podés mostrar un Toast aquí
         }
     }
+
 }
 
 @Composable
@@ -86,6 +94,8 @@ fun WebViewPage(url: String) {
     AndroidView(
         factory = { context ->
             WebView(context).apply {
+                //setLayerType(View.LAYER_TYPE_SOFTWARE, null)
+
                 webViewClient = WebViewClient()
                 // ¡Agregá esto!
                 webChromeClient = object : WebChromeClient() {
@@ -100,7 +110,8 @@ fun WebViewPage(url: String) {
                 settings.useWideViewPort = true
                 settings.loadWithOverviewMode = true
                 settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
-                settings.userAgentString = "Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.66 Mobile Safari/537.36"
+                settings.userAgentString = "Mozilla/5.0 (Linux; Android 9; Mobile; rv:89.0) Gecko/89.0 Firefox/89.0"
+
                 settings.allowFileAccess = true
                 settings.allowContentAccess = true
                 settings.javaScriptCanOpenWindowsAutomatically = true
