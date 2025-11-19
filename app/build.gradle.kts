@@ -12,8 +12,10 @@ android {
         applicationId = "enlaceschaco.ar"
         minSdk = 21
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2
+        versionName = "1.1"
+        
+        multiDexEnabled = true
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -21,10 +23,15 @@ android {
     buildTypes {
         release {
             isMinifyEnabled = false
+            isShrinkResources = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+        }
+        debug {
+            isMinifyEnabled = false
+            isShrinkResources = false
         }
     }
     compileOptions {
@@ -55,12 +62,22 @@ dependencies {
       // Glide + Landscapist (para Compose)
     implementation("com.github.bumptech.glide:glide:4.16.0")
     implementation("com.github.skydoves:landscapist-glide:2.3.6")
+    
+    // Resolución de conflictos de versiones
+    configurations.all {
+        resolutionStrategy {
+            force("org.jetbrains.kotlin:kotlin-stdlib:1.9.23")
+            force("org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.9.23")
+            force("org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.9.23")
+        }
+    }
 
 
     // AndroidX Core y Lifecycle
     implementation("androidx.core:core-ktx:1.13.1")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.7.0")
     implementation("androidx.compose.material3:material3:1.2.1")
+    implementation("androidx.multidex:multidex:2.0.1")
 
 
     // Testing
