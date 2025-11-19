@@ -34,6 +34,8 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.Text as Text3
+import android.widget.Toast
+import android.content.pm.PackageManager
 
 
 class MainActivity : ComponentActivity() {
@@ -50,6 +52,32 @@ class MainActivity : ComponentActivity() {
                 R.drawable.logo2,
                 R.drawable.logo3
             )
+
+            // Mostrar versión al iniciar
+            LaunchedEffect(Unit) {
+                try {
+                    val packageInfo = this@MainActivity.packageManager.getPackageInfo(
+                        this@MainActivity.packageName, 0
+                    )
+                    val versionName = packageInfo.versionName
+                    val versionCode = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+                        packageInfo.longVersionCode.toInt()
+                    } else {
+                        @Suppress("DEPRECATION")
+                        packageInfo.versionCode
+                    }
+                    
+                    android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                        Toast.makeText(
+                            this@MainActivity,
+                            "Versión $versionName (Build $versionCode)",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }, 2000) // Mostrar después de 2 segundos
+                } catch (e: Exception) {
+                    android.util.Log.e("MainActivity", "Error obteniendo versión", e)
+                }
+            }
 
             // Verificar actualizaciones al iniciar
             LaunchedEffect(Unit) {
@@ -148,8 +176,21 @@ fun WebViewPage(url: String) {
                         view: WebView?,
                         request: WebResourceRequest?
                     ): Boolean {
-                        // Permitir que el WebView maneje todas las URLs
-                        return false
+                        val url = request?.url?.toString()
+                        android.util.Log.d("WEBVIEW", "Navegación a: $url")
+                        // Permitir que el WebView maneje todas las URLs, incluyendo navegaciones internas
+                        if (url != null && url.startsWith("http")) {
+                            view?.loadUrl(url)
+                        }
+                        return true
+                    }
+                    
+                    override fun shouldInterceptRequest(
+                        view: WebView?,
+                        request: WebResourceRequest?
+                    ): WebResourceResponse? {
+                        // Permitir todas las solicitudes de recursos (CSS, JS, imágenes, etc.)
+                        return super.shouldInterceptRequest(view, request)
                     }
                     
                     override fun onPageStarted(view: WebView?, url: String?, favicon: android.graphics.Bitmap?) {
@@ -164,27 +205,114 @@ fun WebViewPage(url: String) {
                         // Asegurar que las cookies se persistan después de cargar la página
                         cookieManager.flush()
                         
-                        // Inyectar JavaScript para forzar la recarga de contenido dinámico
-                        // Esto ayuda con aplicaciones SPA (Single Page Applications)
+                        // Inyectar JavaScript mejorado para SPA y contenido dinámico
                         view?.evaluateJavascript("""
                             (function() {
-                                // Forzar recarga de contenido dinámico
+                                console.log('WebView: Iniciando inyección de JavaScript');
+                                
+                                // Forzar recarga de eventos
                                 if (typeof window.dispatchEvent === 'function') {
                                     window.dispatchEvent(new Event('resize'));
                                     window.dispatchEvent(new Event('load'));
+                                    window.dispatchEvent(new Event('DOMContentLoaded'));
                                 }
-                                // Intentar inicializar contenido si hay funciones de inicialización
+                                
+                                // Inicializar contenido si hay funciones
                                 if (typeof window.onload === 'function') {
-                                    window.onload();
+                                    try { window.onload(); } catch(e) { console.log('Error en onload:', e); }
                                 }
-                                // Forzar renderizado de React/Vue/Angular si están presentes
+                                
+                                // Manejar React
                                 if (window.React && window.ReactDOM) {
-                                    var event = new Event('DOMContentLoaded');
-                                    document.dispatchEvent(event);
+                                    console.log('WebView: Detectado React');
+                                    var containers = document.querySelectorAll('[data-reactroot], [id^="root"], [id^="app"]');
+                                    containers.forEach(function(container) {
+                                        if (container && container.innerHTML.trim() === '') {
+                                            console.log('WebView: Forzando re-render de React');
+                                            var event = new Event('DOMContentLoaded');
+                                            document.dispatchEvent(event);
+                                        }
+                                    });
                                 }
-                                console.log('WebView: Contenido dinámico forzado a recargar');
+                                
+                                // Manejar Vue
+                                if (window.Vue) {
+                                    console.log('WebView: Detectado Vue');
+                                    var vueApps = document.querySelectorAll('[data-v-app], [id^="app"]');
+                                    vueApps.forEach(function(app) {
+                                        if (app && app.innerHTML.trim() === '') {
+                                            console.log('WebView: Forzando re-render de Vue');
+                                            window.dispatchEvent(new Event('vue-mounted'));
+                                        }
+                                    });
+                                }
+                                
+                                // Forzar renderizado de elementos ocultos o vacíos
+                                setTimeout(function() {
+                                    var emptyContainers = document.querySelectorAll('.container, .content, main, [role="main"]');
+                                    emptyContainers.forEach(function(container) {
+                                        if (container && container.innerHTML.trim() === '') {
+                                            console.log('WebView: Contenedor vacío detectado, forzando recarga');
+                                            container.style.display = 'block';
+                                            container.style.visibility = 'visible';
+                                        }
+                                    });
+                                    
+                                    // Forzar clic en elementos de menú si están presentes
+                                    var menuItems = document.querySelectorAll('a[href], button, [onclick], .nav-link, .menu-item');
+                                    menuItems.forEach(function(item) {
+                                        item.addEventListener('click', function(e) {
+                                            console.log('WebView: Click detectado en:', item);
+                                            // Asegurar que el evento se propaga
+                                            if (e.stopPropagation) {
+                                                e.stopPropagation();
+                                            }
+                                        }, true);
+                                    });
+                                    
+                                    // Habilitar todos los enlaces y botones
+                                    document.querySelectorAll('a, button').forEach(function(el) {
+                                        el.style.pointerEvents = 'auto';
+                                        el.style.cursor = 'pointer';
+                                    });
+                                }, 500);
+                                
+                                // Re-ejecutar scripts que puedan no haberse ejecutado
+                                var scripts = document.querySelectorAll('script[src]');
+                                scripts.forEach(function(script) {
+                                    if (!script.hasAttribute('data-loaded')) {
+                                        var newScript = document.createElement('script');
+                                        newScript.src = script.src;
+                                        newScript.setAttribute('data-loaded', 'true');
+                                        document.head.appendChild(newScript);
+                                    }
+                                });
+                                
+                                console.log('WebView: Inyección de JavaScript completada');
                             })();
                         """.trimIndent(), null)
+                        
+                        // Segunda inyección después de un delay para asegurar que el DOM esté listo
+                        view?.postDelayed({
+                            view.evaluateJavascript("""
+                                (function() {
+                                    console.log('WebView: Segunda inyección después de delay');
+                                    // Forzar actualización de contenido
+                                    if (document.body) {
+                                        document.body.style.display = 'block';
+                                        var event = new Event('resize');
+                                        window.dispatchEvent(event);
+                                    }
+                                    
+                                    // Intentar activar routers de SPA
+                                    if (window.history && window.history.pushState) {
+                                        var currentPath = window.location.pathname;
+                                        window.history.pushState({}, '', currentPath);
+                                        window.dispatchEvent(new PopStateEvent('popstate'));
+                                    }
+                                })();
+                            """.trimIndent(), null)
+                        }, 1000)
                     }
                     
                     override fun onReceivedError(
@@ -240,6 +368,17 @@ fun WebViewPage(url: String) {
                 // Configuraciones de JavaScript
                 settings.javaScriptCanOpenWindowsAutomatically = true
                 settings.mediaPlaybackRequiresUserGesture = false
+                
+                // Habilitar interacciones táctiles
+                setOnTouchListener { v, event ->
+                    v.performClick()
+                    false
+                }
+                
+                // Asegurar que el WebView pueda recibir clics
+                isClickable = true
+                isFocusable = true
+                isFocusableInTouchMode = true
                 
                 // Configuraciones de zoom
                 settings.setSupportZoom(true)
